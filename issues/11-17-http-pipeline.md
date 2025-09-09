@@ -3,6 +3,8 @@ title: フェーズ11: HTTPパイプライン(任意強化)
 phase: 11
 estimate: 40-60m
 status: open
+id: F11-17
+deps: [F11-01]
 ---
 
 ## 目的
@@ -18,3 +20,25 @@ status: open
 
 ## 補足
 HTTP/2非対応の明示。
+
+## 解説 / 背景
+パイプラインは遅延削減; 正しい順序維持が要。
+
+## リスク / 注意点
+- 応答順序逆転
+- 無制限キューによるメモリ増
+
+## テスト観点
+- 連続送信 3 リクエスト
+- 意図的遅延挿入
+
+## 受入チェックリスト
+- [ ] 順序保持
+- [ ] キュークリア
+
+## 簡易コード例
+```cpp
+struct PipelineItem { Request req; };
+std::deque<PipelineItem> pipeQueue; // 受信順
+```
+

@@ -3,6 +3,8 @@ title: フェーズ11: ヘッダ総量 / 行長制限
 phase: 11
 estimate: 20-30m
 status: open
+id: F11-02
+deps: [F2-01]
 ---
 
 ## 目的
@@ -18,3 +20,25 @@ status: open
 
 ## 補足
 閾値は定数化し後で設定化可能。
+
+## 解説 / 背景
+防御的プラクティスでサービス妨害防止。
+
+## リスク / 注意点
+- サイズ計測境界 off-by-one
+- マルチバイト混在
+
+## テスト観点
+- ぎりぎりサイズ
+- 1バイト超過
+
+## 受入チェックリスト
+- [ ] 制限内許可
+- [ ] 制限超過拒否
+- [ ] ログにサイズ出力
+
+## 簡易コード例
+```cpp
+bool headerSizeWithin(const std::string &raw, size_t limit) { return raw.size() <= limit; }
+```
+
