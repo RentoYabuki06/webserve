@@ -1,46 +1,67 @@
-# Webserve
+# Webserv (42 Project)
 
-A simple HTTP server implementation in C++ as part of the 42 Tokyo curriculum.
+## 📌 概要
+本プロジェクトは **C++98 で HTTP サーバーを実装**する課題です。  
+サーバーはノンブロッキングで動作し、`poll()`（または `select`/`epoll`/`kqueue`）を用いた **1つのイベントループ**で入出力を処理します。  
+実際にブラウザからアクセスでき、NGINXと比較しながら挙動を確認することを目的としています。
 
-## Overview
+---
 
-This project implements a lightweight HTTP server from scratch using C++. It handles HTTP requests, serves static content, processes CGI scripts, and manages server configuration files.
+## ✅ Mandatory Part の達成条件
 
-## Features
+### 1. サーバーの基本挙動
+- `./webserv [configuration file]` で起動可能。
+- ノンブロッキングで動作し、`poll()` 等で **すべてのI/Oを一括管理**。
+- クライアント切断を正しく処理し、リクエストがハングしない。
 
-- HTTP/1.1 protocol support
-- Static file serving
-- Custom error pages
-- CGI script execution
-- Multiple server configuration
-- Connection handling with non-blocking I/O
+### 2. HTTP機能
+- **GET / POST / DELETE** をサポート。
+- 正しい **HTTPレスポンスコード** を返す。
+- **静的ファイル配信**が可能。
+- **ファイルアップロード**に対応。
+- **CGI** を最低1種類（例: `php-cgi`, `python`）動作させる。
 
-## Project Structure
+### 3. エラーハンドリング
+- **デフォルトエラーページ**を持つ（設定がなくても返せる）。
+- リクエストボディサイズ制限など、異常時に正しいレスポンスを返す。
 
-- `main.cpp`: Entry point for the server application
-- `core/`: Core server components
-  - `Server`: Main server implementation
-  - `Request`: HTTP request parsing and handling
-  - `Response`: HTTP response generation
-  - `Router`: URL routing system
-- `config/`: Configuration file parsing and management
-- `cgi/`: Common Gateway Interface implementation
-- `utils/`: Utility functions and classes
-  - `Logger`: Logging system
-  - `StringUtils`: String manipulation utilities
-- `www/`: Web content directory
-  - `index.html`: Default landing page
-  - `error_pages/`: Custom error pages
+### 4. 設定ファイル
+- NGINX風の設定が可能であること：
+  - ポートとホストを指定。
+  - `server_name` の設定。
+  - デフォルトサーバーの指定。
+  - エラーページの設定。
+  - 各ルートで以下の設定が可能：
+    - 許可するHTTPメソッド
+    - リダイレクト
+    - ルートディレクトリ/ファイル指定
+    - ディレクトリリストの有効・無効
+    - デフォルトファイル指定
+    - CGIの割り当て
+    - ファイルアップロードと保存先
+- **複数ポートで待ち受け可能**。
 
-## Building and Running
+### 5. 実用性・テスト
+- **ブラウザからアクセス可能**。
+- **NGINXと挙動を比較**して正しい動作を確認。
+- **ストレステスト**しても落ちず、応答し続ける。
 
-### Prerequisites
+---
 
-- C++ compiler with C++98 support
-- Make
+## 🚀 推奨実装ステップ
+1. **GETリクエストで静的ファイルを返す**（最小限のWebサーバー）
+2. **POSTリクエストでファイルアップロード**
+3. **DELETEリクエストの実装**
+4. **CGI対応**（php-cgi, python など）
+5. **設定ファイルでのサーバー/ルート管理**
+6. **エラーページやリクエスト制限の追加**
+7. **ブラウザ・NGINXとの比較テスト**
+8. **ストレステストで安定性確認**
 
-### Compilation
+---
 
-```bash
-make
-```
+## 🔗 参考
+- [RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1](https://www.rfc-editor.org/rfc/rfc2616)
+- [NGINX Documentation](https://nginx.org/en/docs/)
+
+---
