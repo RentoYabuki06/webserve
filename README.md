@@ -65,3 +65,33 @@
 - [NGINX Documentation](https://nginx.org/en/docs/)
 
 ---
+
+## 🤖 自動 Issue 生成 (GitHub Actions)
+`issues/` ディレクトリ内の各 Markdown から GitHub Issue を自動生成/同期するワークフローを追加しています。
+
+### 使い方
+1. リポジトリの *Actions* タブを開く
+2. `Auto Create Issues from Markdown` を選択
+3. `Run workflow` ボタンを押して手動実行 (初回推奨)
+4. 以後 `issues/*.md` に変更を push すると自動実行
+
+### 仕様
+- フロントマター `title`, `phase`, `id` を読み取りラベル化
+- 既に同タイトルの Issue が存在する場合：
+  - まだ `<!-- synced:` フッタが無ければ本文更新
+  - ある場合はスキップ
+- ラベル:
+  - `auto-generated`
+  - `phase-<n>`
+  - `id:<ID>`
+
+### 注意
+- タイトル重複は一意性を壊すので避ける
+- 削除同期（Issue を閉じる/削除する）は未実装（要望があれば拡張可）
+- 依存関係 `deps` は現状ラベル化していない（必要なら拡張可能）
+
+### 拡張案
+- `deps` を `dep:F1-02` のように個別ラベルへ
+- Closed 状態の自動反映（Done チェックボックス判定）
+- Issue コメントに差分サマリ投稿
+
