@@ -1,0 +1,28 @@
+name: webserv-ci
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [dev]
+
+jobs:
+  build-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake clang
+
+      - name: Build
+        run: |
+          make clean || true
+          make -j
+
+    #   - name: Run unit tests
+    #     run: |
+    #       chmod +x ./tests/run_unit_tests.sh
+    #       ./tests/run_unit_tests.sh
