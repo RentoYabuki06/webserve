@@ -1,97 +1,89 @@
-# Webserv (42 Project)
+# webserve C++ Project
 
-## 📌 概要
-本プロジェクトは **C++98 で HTTP サーバーを実装**する課題です。  
-サーバーはノンブロッキングで動作し、`poll()`（または `select`/`epoll`/`kqueue`）を用いた **1つのイベントループ**で入出力を処理します。  
-実際にブラウザからアクセスでき、NGINXと比較しながら挙動を確認することを目的としています。
+## 共通開発ルール
+- branch戦略：[Github Flow](https://qiita.com/trsn_si/items/cfecbf7dff20c64628ea)
+  - mainブランチは本番用
+  - devブランチを開発用の主軸ブランチとして、そこからfeatureブランチを切って開発を行う
+  - featureブランチは1つのissueに対して1つ作成し、完了したらdevブランチにマージする
+    - commitメッセージにどのissueに対応しているかを明記する（ex. feat:XX, close #1）
+- commitメッセージ例
+  - feat: 新機能追加
+  - fix: バグ修正
+  - docs: ドキュメントのみの変更
+  - style: フォーマットの変更、セミコロンの追加などコードの意味に影響しない変更
+  - refactor: リファクタリング
+  - test: テストコード、テストデータの追加や変更
+  - chore: ビルドプロセスや補助ツール、ライブラリの変更などその他の変更
+- PRルール
+  - 1PRにつき1issueに対応する
+  - レビューアを必ず2人以上つける（Copilot + RentoYabuki06）
+  - 自己レビューを必ず行う
+  - WIP（Work In Progress）の段階ではレビューアをつけない
+  - レビューアからApproveが出たらマージする
+  - マージは基本的にdevブランチに対して行う（mainは触らない！）
+  - CI（ビルド/テスト）が通らないとマージしない（できないように設定済）
+- コード規約
+  - confilctを避けるため、42ヘッダーは使用しない（normないのでヘッダーをつける必要なし）
+  - C++のコーディング規約は[Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html)に準拠する
+  - class名はUpperCamelCase、メソッド名はlowerCamelCaseで、ファイル名とclass名は一対一対応させる
 
----
+## ディレクトリ構成（最終形の目安）
+チーム開発を前提とした責務分割。ヘッダは `includes/`、実装は `srcs/` に配置します。
 
-## ✅ Mandatory Part の達成条件
+```
+/
+  Makefile
+  README.md
+  .github/workflows/
+    ci.yml                 # CI（ビルド/テスト）
+  doc/                    # 設計やAPI凍結資料
+  issues/                 # 開発タスクの仕様書（履歴）
 
-### 1. サーバーの基本挙動
-- `./webserv [configuration file]` で起動可能。
-- ノンブロッキングで動作し、`poll()` 等で **すべてのI/Oを一括管理**。
-- クライアント切断を正しく処理し、リクエストがハングしない。
+  conf/
+    default.conf          # サンプル設定
+    mime.types            # MIMEマッピング
 
-### 2. HTTP機能
-- **GET / POST / DELETE** をサポート。
-- 正しい **HTTPレスポンスコード** を返す。
-- **静的ファイル配信**が可能。
-- **ファイルアップロード**に対応。
-- **CGI** を最低1種類（例: `php-cgi`, `python`）動作させる。
+  public/                 # 静的ファイル配信ルート
+    index.html
+    uploads/              # アップロード保存先
 
-### 3. エラーハンドリング
-- **デフォルトエラーページ**を持つ（設定がなくても返せる）。
-- リクエストボディサイズ制限など、異常時に正しいレスポンスを返す。
+  error_pages/            # カスタムエラーページ
+    404.html 403.html 5xx.html
 
-### 4. 設定ファイル
-- NGINX風の設定が可能であること：
-  - ポートとホストを指定。
-  - `server_name` の設定。
-  - デフォルトサーバーの指定。
-  - エラーページの設定。
-  - 各ルートで以下の設定が可能：
-    - 許可するHTTPメソッド
-    - リダイレクト
-    - ルートディレクトリ/ファイル指定
-    - ディレクトリリストの有効・無効
-    - デフォルトファイル指定
-    - CGIの割り当て
-    - ファイルアップロードと保存先
-- **複数ポートで待ち受け可能**。
+  cgi-bin/                # CGIサンプルスクリプト
+    echo.py env.php
 
-### 5. 実用性・テスト
-- **ブラウザからアクセス可能**。
-- **NGINXと挙動を比較**して正しい動作を確認。
-- **ストレステスト**しても落ちず、応答し続ける。
+  includes/               # ヘッダ群
+    core/
+      Server.hpp Connection.hpp Router.hpp Buffer.hpp FileReader.hpp ErrorPage.hpp Timer.hpp
+    net/
+      ListeningSocket.hpp Poller.hpp SocketUtil.hpp
+    http/
+      Request.hpp Response.hpp Parser.hpp Headers.hpp ChunkedDecoder.hpp Status.hpp ReasonPhrases.hpp MimeTypes.hpp
+    config/
+      Config.hpp Tokenizer.hpp Parser.hpp Validator.hpp
+    cgi/
+      CgiDispatcher.hpp CgiEnv.hpp CgiProcess.hpp CgiHeaders.hpp
+    utils/
+      Log.hpp Fs.hpp String.hpp Path.hpp
 
----
+  srcs/                   # 実装（.cpp）
+    main.cpp
+    core/   ...
+    net/    ...
+    http/   ...
+    config/ ...
+    cgi/    ...
+    utils/  ...
 
-## 🚀 推奨実装ステップ
-1. **GETリクエストで静的ファイルを返す**（最小限のWebサーバー）
-2. **POSTリクエストでファイルアップロード**
-3. **DELETEリクエストの実装**
-4. **CGI対応**（php-cgi, python など）
-5. **設定ファイルでのサーバー/ルート管理**
-6. **エラーページやリクエスト制限の追加**
-7. **ブラウザ・NGINXとの比較テスト**
-8. **ストレステストで安定性確認**
+  tests/
+    unit/                 # 単体テスト
+    e2e/                  # エンドツーエンドテスト
+    fixtures/             # テスト用データ/設定/CGI
+    run_unit_tests.sh
+    run_e2e_tests.sh
 
----
-
-## 🔗 参考
-- [RFC 2616: Hypertext Transfer Protocol -- HTTP/1.1](https://www.rfc-editor.org/rfc/rfc2616)
-- [NGINX Documentation](https://nginx.org/en/docs/)
-
----
-
-## 🤖 自動 Issue 生成 (GitHub Actions)
-`issues/` ディレクトリ内の各 Markdown から GitHub Issue を自動生成/同期するワークフローを追加しています。
-
-### 使い方
-1. リポジトリの *Actions* タブを開く
-2. `Auto Create Issues from Markdown` を選択
-3. `Run workflow` ボタンを押して手動実行 (初回推奨)
-4. 以後 `issues/*.md` に変更を push すると自動実行
-
-### 仕様
-- フロントマター `title`, `phase`, `id` を読み取りラベル化
-- 既に同タイトルの Issue が存在する場合：
-  - まだ `<!-- synced:` フッタが無ければ本文更新
-  - ある場合はスキップ
-- ラベル:
-  - `auto-generated`
-  - `phase-<n>`
-  - `id:<ID>`
-
-### 注意
-- タイトル重複は一意性を壊すので避ける
-- 削除同期（Issue を閉じる/削除する）は未実装（要望があれば拡張可）
-- 依存関係 `deps` は現状ラベル化していない（必要なら拡張可能）
-
-### 拡張案
-- `deps` を `dep:F1-02` のように個別ラベルへ
-- Closed 状態の自動反映（Done チェックボックス判定）
-- Issue コメントに差分サマリ投稿
+  scripts/                # 開発補助スクリプト（任意）
+    dev-run.sh valgrind.sh bench.sh compare-nginx.sh
+```
 
