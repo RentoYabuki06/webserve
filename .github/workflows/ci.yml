@@ -15,12 +15,23 @@ jobs:
       - name: Install deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake clang
+          sudo apt-get install -y build-essential cmake clang valgrind
 
       - name: Build
         run: |
           make clean || true
-          make -j
+          make -j CXXFLAGS='-Wall -Wextra -Werror -std=c++98 -I. -g -O0'
+
+      - name: Leak check (Valgrind)
+        run: |
+          if [ ! -x ./webserv ]; then echo "binary ./webserv not found"; exit 1; fi
+          # Kill if it hangs: ensure CI doesn't block forever
+          timeout 5s valgrind \
+            --leak-check=full \
+            --show-leak-kinds=all \
+            --errors-for-leak-kinds=all \
+            --error-exitcode=1 \
+            ./webserv || { echo "Valgrind failed or timed out"; exit 1; }
 
     #   - name: Run unit tests
     #     run: |
