@@ -6,7 +6,7 @@
 /*   By: yabukirento <yabukirento@student.42.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/12 20:05:03 by yabukirento       #+#    #+#             */
-/*   Updated: 2025/09/13 19:17:44 by yabukirento      ###   ########.fr       */
+/*   Updated: 2025/09/13 21:04:28 by yabukirento      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,7 @@
 #include <poll.h>        // poll, struct pollfd
 #include <vector>        // std::vector
 #include <map>        // std::map
+#include <csignal>       // std::signal, sig_atomic_t
 
 // 個々のクライアントの接続状態を管理する構造体
 struct Conn {
@@ -33,6 +34,10 @@ struct Conn {
 
 // 各fdとConn構造体を紐づけておくmapコンテナ（static:ファイル内のみのグローバル変数）
 static std::map<int, Conn> g_conns;
+
+// Ctrl+C/SIGTERM で終了するためのフラグ
+static volatile sig_atomic_t g_stop = 0;
+static void onSignal(int) { g_stop = 1; }
 
 // ポート番号を受け取り、待受用ソケットを作って返す関数
 static int create_listen_socket(in_port_t port) {
@@ -130,40 +135,43 @@ static void handleAccept(int listen_fd, std::vector<struct pollfd> &pfds) {
 
 // pollイベントループ
 static void eventLoop(int listen_fd, std::vector<struct pollfd> &pfds) {
-	while (true) {
-		// イベント発生したfdの数を返す. 1000msイベントが発生しない場合は0を返す.
-		int n = ::poll(pfds.empty() ? nullptr : pfds.data(), pfds.size(), 1000);
-		// エラーとタイムアウトの処理
-		if (n < 0) {
-			if (errno == EINTR) continue;   // シグナルによる中断のみループ継続
-			Log::error("poll error");
-			break;
-		}
-		if (n == 0) continue;
-		// 各イベントの処理
-		for (size_t i = 0; i < pfds.size() && n; ) {
-			// pdfs配列の各要素のreventsメンバーでイベント発生の有無を判断. 未発生時は0,発生時は1.
-			struct pollfd &p = pfds[i];
-			if (p.revents == 0) {
-				++i;
-				continue;
-			}
-			// イベント処理判定
-			short re = p.revents;
-			p.revents = 0;
-			--n;
-			// エラー/切断検知
-			if (re & (POLLERR | POLLHUP | POLLNVAL)) {
-				cleanup_fd(p.fd, pfds, i);
-				continue;
-			}
-			// accept処理
-			if (p.fd == listen_fd) {
-				if (re & POLLIN) handleAccept(listen_fd, pfds);
-				++i;
-				continue;
-			}
-			Conn &c = g_conns[p.fd];
+    while (!g_stop) {
+        // イベント発生したfdの数を返す. 1000msイベントが発生しない場合は0を返す.
+        int n = ::poll(pfds.empty() ? nullptr : pfds.data(), pfds.size(), 1000);
+        // エラーとタイムアウトの処理
+        if (n < 0) {
+            if (errno == EINTR) {           // シグナル割り込み
+                if (g_stop) break;          // 終了要求なら抜ける
+                continue;                   // それ以外は続行
+            }
+            Log::error("poll error");
+            break;
+        }
+        if (n == 0) continue;
+        // 各イベントの処理
+        for (size_t i = 0; i < pfds.size() && n; ) {
+            // pdfs配列の各要素のreventsメンバーでイベント発生の有無を判断. 未発生時は0,発生時は1.
+            struct pollfd &p = pfds[i];
+            if (p.revents == 0) {
+                ++i;
+                continue;
+            }
+            // イベント処理判定
+            short re = p.revents;
+            p.revents = 0;
+            --n;
+            // エラー/切断検知
+            if (re & (POLLERR | POLLHUP | POLLNVAL)) {
+                cleanup_fd(p.fd, pfds, i);
+                continue;
+            }
+            // accept処理
+            if (p.fd == listen_fd) {
+                if (re & POLLIN) handleAccept(listen_fd, pfds);
+                ++i;
+                continue;
+            }
+            Conn &c = g_conns[p.fd];
 			
 			// 読み取り
 			if (re & POLLIN) {
@@ -215,9 +223,14 @@ static void eventLoop(int listen_fd, std::vector<struct pollfd> &pfds) {
 }
 
 int main(int argc, char **argv) {
-	(void) argc;
-	(void) argv;
-	Log::info("Server Starting ...");
+    (void) argc;
+    (void) argv;
+
+    // シグナルハンドラ登録（Ctrl+C / kill で終了）
+    std::signal(SIGINT, onSignal);
+    std::signal(SIGTERM, onSignal);
+
+    Log::info("Server Starting ...");
 
 	const in_port_t port = 8080;
 	int listen_fd = create_listen_socket(port);
