@@ -108,7 +108,7 @@ static bool set_nonblock_cloexec(int fd) {
 // accept受領処理
 static void handleAccept(int listen_fd, std::vector<struct pollfd> &pfds) {
 	while (true) {
-		int cfd = ::accept(listen_fd, 0 ,0);
+		int cfd = ::accept(listen_fd, 0, 0);
 		if (cfd < 0) {
 			if (errno == EAGAIN || errno == EWOULDBLOCK) break;
 			Log::error("accept failed");
