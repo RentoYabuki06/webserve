@@ -6,7 +6,7 @@
 /*   By: yabukirento <yabukirento@student.42.fr>    +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/12 20:05:03 by yabukirento       #+#    #+#             */
-/*   Updated: 2025/09/12 21:52:28 by yabukirento      ###   ########.fr       */
+/*   Updated: 2025/09/13 16:40:15 by yabukirento      ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,8 @@
 #include <unistd.h>      // close
 #include <fcntl.h>       // fcntl, O_NONBLOCK, FD_CLOEXEC
 #include <cerrno>        // errno
+#include <poll.h>        // poll, struct pollfd
+#include <vector>        // std::vector
 
 
 // ポート番号を受け取り、待受用ソケットを作って返す関数
@@ -73,10 +75,32 @@ static int create_listen_socket(in_port_t port) {
     return fd;
 }
 
+// pollイベントループ
+static void eventLoop(std::vector<struct pollfd> &pfds) {
+    while (true) {
+        // イベント発生したfdの数を返す. 1000msイベントが発生しない場合は0を返す.
+        int n = ::poll(&pfds[0], pfds.size(), 1000);
+        // エラーとタイムアウトの処理
+        if (n < 0) {
+            if (errno == EINTR) continue;   // シグナルによる中断のみループ継続
+            Log::error("poll error");
+            break;
+        }
+        if (n == 0) continue;
+        for (size_t i = 0; i < pfds.size() && n; ++i) {
+            // pdfs配列の各要素のreventsメンバーでイベント発生の有無を判断. 未発生時は0,発生時は1.
+            if (pfds[i].revents) {
+                --n;
+            }
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     (void) argc;
     (void) argv;
     Log::info("Server Starting ...");
+
     const in_port_t port = 8080;
     int listen_fd = create_listen_socket(port);
     if (listen_fd < 0) {
@@ -84,6 +108,16 @@ int main(int argc, char **argv) {
         return 1;
     }
     Log::info("Listening on 0.0.0.0:8080 (non-blocking)");
+
+    std::vector<struct pollfd> pfds;
+    struct pollfd pfd;
+    pfd.fd = listen_fd;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+    pfds.push_back(pfd);
+
+    eventLoop(pfds);
+    
     ::close(listen_fd);
     Log::info("Server Finishing ...");
     return 0;
