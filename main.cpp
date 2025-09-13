@@ -193,6 +193,7 @@ static void eventLoop(int listen_fd, std::vector<struct pollfd> &pfds) {
 						if (errno == EAGAIN || errno == EWOULDBLOCK) break;
 						c.closed = true;
 					} else {
+						c.closed = true;
 						break;
 					}
 				}
