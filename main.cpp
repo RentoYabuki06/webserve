@@ -140,7 +140,7 @@ static void eventLoop(int listen_fd, std::vector<struct pollfd> &pfds) {
 			break;
 		}
 		if (n == 0) continue;
-		// 各イベントの処理ssss
+		// 各イベントの処理
 		for (size_t i = 0; i < pfds.size() && n; ) {
 			// pdfs配列の各要素のreventsメンバーでイベント発生の有無を判断. 未発生時は0,発生時は1.
 			struct pollfd &p = pfds[i];
