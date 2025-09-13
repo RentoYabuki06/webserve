@@ -185,7 +185,7 @@ static void eventLoop(int listen_fd, std::vector<struct pollfd> &pfds) {
 			}
 			// 書き込み（部分送信に対応）
 			if ((re & POLLOUT) && !c.out.empty()) {
-				while (true) {			
+				while (true) {
 					ssize_t w = ::send(p.fd, c.out.data(), c.out.size(), MSG_NOSIGNAL);
 					if (w > 0) {
 						c.out.erase(0, static_cast<size_t>(w));
